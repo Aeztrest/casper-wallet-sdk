@@ -1,12 +1,16 @@
-//! Baret PaymentGuard — an on-chain spending-limit vault for x402 / agentic
-//! micropayments on Casper.
+//! PaymentGuard — a Casper smart-wallet building block: an on-chain,
+//! programmable spending-limit vault for agentic / recurring micropayments.
 //!
-//! The on-chain counterpart of Baret's off-chain x402 firewall
-//! (`packages/casper-guard`): the wallet owner deposits a CEP-18 token and
-//! grants each merchant a per-transaction cap plus a rolling 24-hour cap. An
-//! agent can then call [`PaymentGuard::pay`] to settle payments **without the
-//! owner signing each one** — the caps ARE the firewall. Payments above a cap,
-//! to an unregistered merchant, or to a paused/revoked merchant revert on-chain.
+//! The owner deposits a CEP-18 token and grants each merchant a
+//! per-transaction cap plus a rolling 24-hour cap. An agent (e.g. an
+//! autonomous AI agent, or any hot wallet the owner delegates to) can then
+//! call [`PaymentGuard::pay`] to settle payments **without the owner signing
+//! each one** — the caps enforced on-chain ARE the authorization. Payments
+//! above a cap, to an unregistered merchant, or to a paused/revoked merchant
+//! revert on-chain. Conceptually similar to a scoped session key (e.g.
+//! Solana's Swig) or a smart-wallet spending policy — Casper has no native
+//! account-abstraction primitive for this, so it's implemented as a vault
+//! contract instead of a wallet-native feature.
 
 use odra::casper_types::U256;
 use odra::prelude::*;
@@ -281,7 +285,7 @@ impl PaymentGuard {
 #[cfg(test)]
 mod tests {
     use super::{Error, PaymentGuard, PaymentGuardHostRef, PaymentGuardInitArgs, Status};
-    use crate::token::{Cep18x402, Cep18x402HostRef, Cep18x402InitArgs};
+    use odra_modules::cep18_token::{Cep18, Cep18HostRef, Cep18InitArgs};
     use odra::casper_types::U256;
     use odra::host::{Deployer, HostEnv, HostRef};
     use odra::prelude::Addressable;
@@ -293,18 +297,20 @@ mod tests {
         U256::from(n * DEC)
     }
 
-    fn setup() -> (HostEnv, Cep18x402HostRef, PaymentGuardHostRef) {
+    // PaymentGuard only ever calls the standard CEP-18 interface
+    // (transfer/transfer_from/balance_of) via Cep18ContractRef, so any
+    // CEP-18 token works as its vault asset — these tests use the plain
+    // odra_modules token rather than requiring a specific project's token.
+    fn setup() -> (HostEnv, Cep18HostRef, PaymentGuardHostRef) {
         let env = odra_test::env();
         let owner = env.get_account(0);
-        let token = Cep18x402::deploy(
+        let token = Cep18::deploy(
             &env,
-            Cep18x402InitArgs {
-                symbol: "X402".to_string(),
-                name: "x402 USD".to_string(),
+            Cep18InitArgs {
+                symbol: "USD".to_string(),
+                name: "Test USD".to_string(),
                 decimals: 9,
                 initial_supply: U256::from(1_000_000u128 * DEC),
-                chain_name: "casper-net-1".to_string(),
-                eip712_version: "1".to_string(),
             },
         );
         let guard = PaymentGuard::deploy(
@@ -318,7 +324,7 @@ mod tests {
     }
 
     /// Owner funds the vault with `amount` whole tokens.
-    fn fund(env: &HostEnv, token: &mut Cep18x402HostRef, guard: &mut PaymentGuardHostRef, amount: u128) {
+    fn fund(env: &HostEnv, token: &mut Cep18HostRef, guard: &mut PaymentGuardHostRef, amount: u128) {
         let owner = env.get_account(0);
         env.set_caller(owner);
         token.approve(&guard.address(), &tokens(amount));

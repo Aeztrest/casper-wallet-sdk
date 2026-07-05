@@ -2,6 +2,4 @@
 #![cfg_attr(not(test), no_main)]
 extern crate alloc;
 
-pub mod eip712;
 pub mod payment_guard;
-pub mod token;

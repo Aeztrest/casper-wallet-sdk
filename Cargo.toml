@@ -1,12 +1,14 @@
 [package]
 edition = "2021"
-name = "casper_baret_contracts"
+name = "casper_wallet_sdk"
 version = "0.1.0"
+license = "MIT"
+description = "A programmable spending-limit smart-wallet vault for Casper Network (Odra)."
+repository = "https://github.com/Aeztrest/casper-wallet-sdk"
 
 [dependencies]
 odra = { version = "2.7.0", features = [], default-features = false }
 odra-modules = { version = "2.7.0", features = [], default-features = false }
-sha3 = { version = "0.10", default-features = false }
 
 [dev-dependencies]
 odra-test = { version = "2.7.0", features = [], default-features = false }
@@ -18,12 +20,12 @@ odra-build = { version = "2.7.0", features = [], default-features = false }
 odra-build = { version = "2.7.0", features = [], default-features = false }
 
 [[bin]]
-name = "casper_baret_contracts_build_contract"
+name = "casper_wallet_sdk_build_contract"
 path = "bin/build_contract.rs"
 test = false
 
 [[bin]]
-name = "casper_baret_contracts_build_schema"
+name = "casper_wallet_sdk_build_schema"
 path = "bin/build_schema.rs"
 test = false
 
