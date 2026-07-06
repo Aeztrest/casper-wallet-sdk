@@ -1,16 +1,15 @@
-//! PaymentGuard — a Casper smart-wallet building block: an on-chain,
-//! programmable spending-limit vault for agentic / recurring micropayments.
+//! PaymentGuard: a Casper smart-wallet building block. An on-chain,
+//! programmable spending-limit vault for agentic or recurring micropayments.
 //!
 //! The owner deposits a CEP-18 token and grants each merchant a
 //! per-transaction cap plus a rolling 24-hour cap. An agent (e.g. an
 //! autonomous AI agent, or any hot wallet the owner delegates to) can then
-//! call [`PaymentGuard::pay`] to settle payments **without the owner signing
-//! each one** — the caps enforced on-chain ARE the authorization. Payments
-//! above a cap, to an unregistered merchant, or to a paused/revoked merchant
-//! revert on-chain. Conceptually similar to a scoped session key (e.g.
-//! Solana's Swig) or a smart-wallet spending policy — Casper has no native
-//! account-abstraction primitive for this, so it's implemented as a vault
-//! contract instead of a wallet-native feature.
+//! call [`PaymentGuard::pay`] to settle payments without the owner signing
+//! each one. The caps enforced on-chain are the entire authorization model.
+//! Payments above a cap, to an unregistered merchant, or to a paused/revoked
+//! merchant revert on-chain. Casper has no native account-abstraction
+//! primitive for scoped spending permissions, so this is implemented as a
+//! standalone vault contract instead.
 
 use odra::casper_types::U256;
 use odra::prelude::*;
@@ -74,7 +73,7 @@ pub struct PaymentGuard {
     initialized: Var<bool>,
     allowances: Mapping<Address, Allowance>,
     /// The agent wallet the owner has delegated day-to-day `pay` calls to.
-    /// Unset until `set_agent` is called — until then only the owner may
+    /// Unset until `set_agent` is called; until then only the owner may
     /// call `pay`. Without this, any third party could force the vault to
     /// pay an already-approved merchant ahead of schedule, e.g. to grief the
     /// rolling daily cap before the real agent needs it.
@@ -150,7 +149,7 @@ impl PaymentGuard {
         self.token_ref().transfer_from(&caller, &me, &amount);
     }
 
-    /// Agentic spend. **No owner signature required for each payment** — the
+    /// Agentic spend. **No owner signature required for each payment**: the
     /// per-tx and rolling daily caps the owner set are the firewall. Only the
     /// owner or the owner-designated agent (`set_agent`) may call this;
     /// otherwise any third party could force the vault to pay an
@@ -299,7 +298,7 @@ mod tests {
 
     // PaymentGuard only ever calls the standard CEP-18 interface
     // (transfer/transfer_from/balance_of) via Cep18ContractRef, so any
-    // CEP-18 token works as its vault asset — these tests use the plain
+    // CEP-18 token works as its vault asset, so these tests use the plain
     // odra_modules token rather than requiring a specific project's token.
     fn setup() -> (HostEnv, Cep18HostRef, PaymentGuardHostRef) {
         let env = odra_test::env();
@@ -340,7 +339,7 @@ mod tests {
 
     #[test]
     fn double_init_reverts() {
-        // Odra treats `init` as a constructor — the VM itself refuses a second
+        // Odra treats `init` as a constructor, so the VM itself refuses a second
         // call. (The in-contract `AlreadyInitialized` guard is belt-and-suspenders.)
         let (_env, token, mut guard) = setup();
         let owner = guard.env().get_account(0);
@@ -451,8 +450,8 @@ mod tests {
 
     #[test]
     fn pay_rejects_unauthorized_caller() {
-        // A third party — not the owner, and no agent has been designated —
-        // must not be able to force the vault to pay an approved merchant.
+        // A third party (not the owner, with no agent designated) must not
+        // be able to force the vault to pay an approved merchant.
         let (env, mut token, mut guard) = setup();
         let merchant = env.get_account(1);
         fund(&env, &mut token, &mut guard, 1_000);

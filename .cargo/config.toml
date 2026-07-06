@@ -1,4 +1,4 @@
-# Casper's execution engine only accepts a WebAssembly MVP-baseline module —
+# Casper's execution engine only accepts a WebAssembly MVP-baseline module:
 # no bulk-memory, reference-types, or other post-MVP proposals. Recent
 # rustc/LLVM versions emit bulk-memory instructions by default for
 # wasm32-unknown-unknown even without an explicit target-feature request
